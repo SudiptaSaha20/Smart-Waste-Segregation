@@ -77,20 +77,11 @@ smart-waste-system/
 └── README.md
 
 ```
-
---- 
-
-## 👨‍💻 Author
-
-Sudipta Saha
-
-- 🌐 [GitHub](https://github.com/SudiptaSaha20)
-
-
 ---
+## Check out live simulation:
+[Smart Waste Management System](https://smart-waste-segregation-lemon.vercel.app/)
 
 ## 📜 License
 
 This project is licensed under the MIT License.
 Feel free to fork and use it for educational purposes.
-
