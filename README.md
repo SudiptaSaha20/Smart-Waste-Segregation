@@ -1,12 +1,96 @@
-# React + Vite
+# ♻️ Smart Waste Segregation System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An **interactive 3D simulation** of a smart IoT + AI/ML waste segregation system.  
+Built using **React, Vite, Three.js, TailwindCSS, and Lucide icons**.  
 
-Currently, two official plugins are available:
+This project simulates how waste items are automatically classified into different categories (Metal, Plastic, Paper, Wet, Biomedical) using sensors and AI/ML, and routed into the correct bin compartments.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+## 🚀 Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- 🗑 **3D Smart Bin Simulation** – Real-time visualization built with Three.js.  
+- 🔍 **Sensor Emulation** – Inductive, IR, Gas, Moisture, and AI/ML camera sensors.  
+- ⚡ **Step-by-Step Process Flow** – Shows each stage (Drop → Sensor Detection → AI/ML Verification → Classification → Disposal).  
+- 🎛 **Interactive UI** – Select different waste types and see the classification process live.  
+- 🌗 **Modern UI** – TailwindCSS styling with smooth transitions and Lucide icons.  
+
+---
+
+## 🛠️ Tech Stack
+
+- [React](https://react.dev/) – Frontend framework  
+- [Vite](https://vitejs.dev/) – Fast development & build tool  
+- [Three.js](https://threejs.org/) – 3D rendering engine  
+- [TailwindCSS](https://tailwindcss.com/) – Utility-first styling  
+- [Lucide Icons](https://lucide.dev/) – Icon set for UI elements  
+
+---
+
+## 📦 Installation & Setup
+
+Clone the repository:
+```bash
+git clone https://github.com/SudiptaSaha20/Smart-Waste-Segregation.git
+cd Smart-Waste-Segregation
+```
+
+Install dependencies:
+```bash
+npm install
+```
+
+Start development server:
+```bash
+npm run dev
+```
+
+Open your browser at:
+```bash
+http://localhost:5173
+```
+
+Build for production:
+```bash
+npm run build
+```
+
+Preview production build:
+```bash
+npm run preview
+```
+
+---
+
+## 📂 Project Structure
+```csharp
+smart-waste-system/
+├── public/            # Static assets
+├── src/
+│   ├── components/    # React components
+│   ├── assets/        # Images/icons
+│   ├── App.jsx        # Main app
+│   ├── main.jsx       # Entry point
+├── package.json
+├── tailwind.config.js
+├── vite.config.js
+└── README.md
+
+```
+
+--- 
+
+## 👨‍💻 Author
+
+Sudipta Saha
+
+- 🌐 [GitHub](https://github.com/SudiptaSaha20)
+
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License.
+Feel free to fork and use it for educational purposes.
+
