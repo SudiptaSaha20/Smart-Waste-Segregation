@@ -1,91 +1,164 @@
-import React, { useState, useRef, useEffect } from 'react';
-import * as THREE from 'three';
-import { 
-  Magnet, 
-  Recycle, 
-  FileText, 
-  Leaf, 
-  AlertTriangle, 
+import React, { useState, useRef, useEffect } from "react";
+import * as THREE from "three";
+import {
+  Recycle,
+  Leaf,
+  AlertTriangle,
   RotateCcw,
-  Cpu,
   Camera,
   Droplets,
-  Zap,
+  Magnet,
   Eye,
-  ChevronRight,
+  Zap,
+  Activity,
   CheckCircle,
-  Activity
-} from 'lucide-react';
+  XCircle,
+  Archive,
+  BarChart3,
+  Lightbulb,
+  Trash2,
+} from "lucide-react";
 
 const SmartWasteSystem = () => {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
   const cameraRef = useRef(null);
-  const binRef = useRef(null);
+  const binsRef = useRef({});
   const wasteItemRef = useRef(null);
   const animationIdRef = useRef(null);
-  const isMountedRef = useRef(false);
-  
-  const [currentStep, setCurrentStep] = useState('idle');
-  const [selectedWaste, setSelectedWaste] = useState(null);
-  const [sensorStatus, setSensorStatus] = useState({});
-  const [classification, setClassification] = useState('');
-  const [isAnimating, setIsAnimating] = useState(false);
+
+  const [selectedWasteType, setSelectedWasteType] = useState(null);
+  const [selectedBin, setSelectedBin] = useState(null);
+  const [currentWastePosition, setCurrentWastePosition] = useState(null);
+  const [binStatus, setBinStatus] = useState({});
+  const [ledStatus, setLedStatus] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [counters, setCounters] = useState({
+    correctDisposals: 0,
+    wrongAttempts: 0,
+    wrongDisposals: 0,
+  });
+  const [currentAttempts, setCurrentAttempts] = useState(0);
+  const [isWasteOnIncorrectBin, setIsWasteOnIncorrectBin] = useState(false);
 
   const wasteTypes = {
-    metal: { 
-      name: 'Metal', 
-      icon: Magnet, 
-      color: 0x888888,
-      sensor: 'inductive',
-      compartment: 'metal'
-    },
-    plastic: { 
-      name: 'Plastic', 
-      icon: Recycle, 
-      color: 0x00ff00,
-      sensor: 'ai_ml',
-      compartment: 'plastic'
-    },
-    paper: { 
-      name: 'Paper/Cardboard', 
-      icon: FileText, 
-      color: 0xffa500,
-      sensor: 'ir_reflection',
-      compartment: 'paper'
-    },
-    wet: { 
-      name: 'Wet/Biodegradable', 
-      icon: Leaf, 
+    kitchen: {
+      name: "Kitchen Waste",
+      icon: Leaf,
       color: 0x8fbc8f,
-      sensor: 'moisture',
-      compartment: 'biodegradable'
+      correctBin: "green",
+      shape: "sphere",
     },
-    biomedical: { 
-      name: 'Biomedical/Sanitary', 
-      icon: AlertTriangle, 
+    garden: {
+      name: "Garden Waste",
+      icon: Leaf,
+      color: 0x228b22,
+      correctBin: "green",
+      shape: "irregular",
+    },
+    paper: {
+      name: "Paper",
+      icon: Recycle,
+      color: 0xffa500,
+      correctBin: "blue",
+      shape: "flat",
+    },
+    plastic: {
+      name: "Plastic",
+      icon: Recycle,
+      color: 0x00ff00,
+      correctBin: "blue",
+      shape: "bottle",
+    },
+    glass: {
+      name: "Glass",
+      icon: Recycle,
+      color: 0x87ceeb,
+      correctBin: "blue",
+      shape: "cylinder",
+    },
+    metal: {
+      name: "Metal",
+      icon: Magnet,
+      color: 0x888888,
+      correctBin: "blue",
+      shape: "can",
+    },
+    clinical: {
+      name: "Clinical Waste",
+      icon: AlertTriangle,
       color: 0xff4444,
-      sensor: 'gas',
-      compartment: 'biomedical'
-    }
+      correctBin: "yellow",
+      shape: "box",
+    },
+    bandages: {
+      name: "Bandages",
+      icon: AlertTriangle,
+      color: 0xffffff,
+      correctBin: "yellow",
+      shape: "irregular",
+    },
   };
 
-  const sensorInfo = {
-    inductive: { name: 'Inductive Sensor', icon: Magnet, color: '#888888' },
-    ir_reflection: { name: 'IR Reflection', icon: Eye, color: '#ff6600' },
-    gas: { name: 'Gas Sensor', icon: AlertTriangle, color: '#ff4444' },
-    moisture: { name: 'Moisture Sensor', icon: Droplets, color: '#4488ff' },
-    ai_ml: { name: 'AI/ML Camera', icon: Camera, color: '#00ff00' }
+  const bins = {
+    green: {
+      name: "Biodegradable Waste",
+      color: 0x00aa00,
+      position: [-6, 0, 0], // Increased spacing
+      sensors: [
+        {
+          type: "moisture",
+          name: "Moisture Sensor",
+          icon: Droplets,
+          color: "#4488ff",
+        },
+        { type: "gas", name: "Gas Sensor", icon: Zap, color: "#ffaa00" },
+      ],
+    },
+    blue: {
+      name: "Recyclable Waste",
+      color: 0x0066cc,
+      position: [0, 0, 0],
+      sensors: [
+        {
+          type: "inductive",
+          name: "Inductive Sensor",
+          icon: Magnet,
+          color: "#888888",
+        },
+        { type: "ir", name: "IR Sensor", icon: Eye, color: "#ff6600" },
+      ],
+    },
+    yellow: {
+      name: "Clinical Waste",
+      color: 0xffcc00,
+      position: [6, 0, 0], // Increased spacing
+      sensors: [
+        { type: "gas", name: "Gas Sensor", icon: Zap, color: "#ff4444" },
+        {
+          type: "proximity",
+          name: "Proximity Sensor",
+          icon: Activity,
+          color: "#00ff88",
+        },
+      ],
+    },
   };
 
   useEffect(() => {
-    isMountedRef.current = true;
     initThreeJS();
-    
     return () => {
-      isMountedRef.current = false;
-      cleanupThreeJS();
+      if (animationIdRef.current) {
+        cancelAnimationFrame(animationIdRef.current);
+      }
+      if (
+        rendererRef.current &&
+        mountRef.current &&
+        mountRef.current.contains(rendererRef.current.domElement)
+      ) {
+        mountRef.current.removeChild(rendererRef.current.domElement);
+      }
     };
   }, []);
 
@@ -94,18 +167,18 @@ const SmartWasteSystem = () => {
 
     // Scene setup
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a0a);
+    scene.background = new THREE.Color(0x1a1a1a);
     sceneRef.current = scene;
 
     // Camera setup
-    const camera = new THREE.PerspectiveCamera(75, 600 / 400, 0.1, 1000);
-    camera.position.set(0, 5, 8);
+    const camera = new THREE.PerspectiveCamera(75, 800 / 500, 0.1, 1000);
+    camera.position.set(0, 8, 16); // Adjusted for larger bins
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
     // Renderer setup
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(600, 400);
+    renderer.setSize(800, 500);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
@@ -113,324 +186,298 @@ const SmartWasteSystem = () => {
     mountRef.current.appendChild(renderer.domElement);
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
     scene.add(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(10, 10, 5);
     directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
     scene.add(directionalLight);
 
-    // Create smart bin
-    createSmartBin();
+    // Create bins
+    createBins();
 
     // Animation loop
     const animate = () => {
-      if (!isMountedRef.current) return;
       animationIdRef.current = requestAnimationFrame(animate);
       renderer.render(scene, camera);
     };
     animate();
   };
 
-  const cleanupThreeJS = () => {
-    if (animationIdRef.current) {
-      cancelAnimationFrame(animationIdRef.current);
-    }
-    
-    if (rendererRef.current) {
-      rendererRef.current.dispose();
-      
-      if (mountRef.current && rendererRef.current.domElement) {
-        mountRef.current.removeChild(rendererRef.current.domElement);
+  const createBins = () => {
+    // Clear any existing bins to prevent replication
+    Object.values(binsRef.current).forEach((bin) => {
+      if (bin.group) {
+        sceneRef.current.remove(bin.group);
       }
-    }
-    
-    // Clean up Three.js objects to prevent memory leaks
-    if (sceneRef.current) {
-      while(sceneRef.current.children.length > 0) {
-        const object = sceneRef.current.children[0];
-        if (object.geometry) object.geometry.dispose();
-        if (object.material) {
-          if (Array.isArray(object.material)) {
-            object.material.forEach(material => material.dispose());
-          } else {
-            object.material.dispose();
-          }
-        }
-        sceneRef.current.remove(object);
-      }
-    }
-  };
-
-  const createSmartBin = () => {
-    const binGroup = new THREE.Group();
-    
-    // Main bin body
-    const binGeometry = new THREE.CylinderGeometry(2, 2.5, 4, 8);
-    const binMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x2a2a2a,
-      transparent: true,
-      opacity: 0.8
     });
-    const binMesh = new THREE.Mesh(binGeometry, binMaterial);
-    binMesh.position.y = 0;
-    binMesh.castShadow = true;
-    binMesh.receiveShadow = true;
-    binGroup.add(binMesh);
+    binsRef.current = {};
 
-    // Compartments (visual indicators)
-    const compartmentColors = [0xff4444, 0x00ff00, 0xffa500, 0x8fbc8f, 0x888888];
-    for (let i = 0; i < 5; i++) {
-      const compartmentGeometry = new THREE.BoxGeometry(0.3, 0.5, 0.3);
-      const compartmentMaterial = new THREE.MeshLambertMaterial({ 
-        color: compartmentColors[i],
+    Object.entries(bins).forEach(([binId, binConfig]) => {
+      const binGroup = new THREE.Group();
+
+      // Main bin body (rectangular) - made larger
+      const binGeometry = new THREE.BoxGeometry(3.5, 3, 3); // Increased size
+      const binMaterial = new THREE.MeshLambertMaterial({
+        color: binConfig.color,
         transparent: true,
-        opacity: 0.6
+        opacity: 0.8,
       });
-      const compartmentMesh = new THREE.Mesh(compartmentGeometry, compartmentMaterial);
-      const angle = (i / 5) * Math.PI * 2;
-      compartmentMesh.position.x = Math.cos(angle) * 2;
-      compartmentMesh.position.z = Math.sin(angle) * 2;
-      compartmentMesh.position.y = -1.5;
-      binGroup.add(compartmentMesh);
-    }
+      const binMesh = new THREE.Mesh(binGeometry, binMaterial);
+      binMesh.position.y = 0;
+      binMesh.castShadow = true;
+      binMesh.receiveShadow = true;
+      binGroup.add(binMesh);
 
-    // Sensor indicators
-    const sensorGeometry = new THREE.RingGeometry(0.2, 0.3, 8);
-    const sensorMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x00ffff,
-      transparent: true,
-      opacity: 0.3
+      // Create two-flap lid
+      const lidGroup = new THREE.Group();
+
+      // Left flap
+      const leftFlapGeometry = new THREE.BoxGeometry(1.75, 0.1, 3); // Adjusted for larger bin
+      const flapMaterial = new THREE.MeshLambertMaterial({
+        color: binConfig.color,
+      });
+      const leftFlap = new THREE.Mesh(leftFlapGeometry, flapMaterial);
+      leftFlap.position.set(-0.875, 1.55, 0); // Adjusted position
+      leftFlap.userData = { originalRotation: 0, isOpen: false };
+      lidGroup.add(leftFlap);
+
+      // Right flap
+      const rightFlap = new THREE.Mesh(
+        leftFlapGeometry.clone(),
+        flapMaterial.clone()
+      );
+      rightFlap.position.set(0.875, 1.55, 0); // Adjusted position
+      rightFlap.userData = { originalRotation: 0, isOpen: false };
+      lidGroup.add(rightFlap);
+
+      binGroup.add(lidGroup);
+
+      // Camera above bin
+      const cameraGeometry = new THREE.BoxGeometry(0.3, 0.2, 0.3);
+      const cameraMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+      const cameraMesh = new THREE.Mesh(cameraGeometry, cameraMaterial);
+      cameraMesh.position.set(0, 4, 0); // Adjusted for larger bin
+      binGroup.add(cameraMesh);
+
+      // Camera support
+      const supportGeometry = new THREE.CylinderGeometry(0.05, 0.05, 2.3, 8); // Adjusted height
+      const supportMaterial = new THREE.MeshLambertMaterial({
+        color: 0x666666,
+      });
+      const supportMesh = new THREE.Mesh(supportGeometry, supportMaterial);
+      supportMesh.position.set(0, 2.85, 0); // Adjusted position
+      binGroup.add(supportMesh);
+
+      // Sensors on the side
+      binConfig.sensors.forEach((sensor, index) => {
+        const sensorGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.2);
+        const sensorMaterial = new THREE.MeshLambertMaterial({
+          color: 0x444444,
+          transparent: true,
+          opacity: 0.8,
+        });
+        const sensorMesh = new THREE.Mesh(sensorGeometry, sensorMaterial);
+        sensorMesh.position.set(1.8, 0.5 + index * 0.6, 0); // Adjusted position
+        binGroup.add(sensorMesh);
+
+        // Sensor indicator light
+        const lightGeometry = new THREE.SphereGeometry(0.1, 8, 6);
+        const lightMaterial = new THREE.MeshLambertMaterial({
+          color: 0x333333,
+          transparent: true,
+          opacity: 0.5,
+        });
+        const lightMesh = new THREE.Mesh(lightGeometry, lightMaterial);
+        lightMesh.position.set(2.0, 0.5 + index * 0.6, 0); // Adjusted position
+        binGroup.add(lightMesh);
+      });
+
+      // LED indicator
+      const ledGeometry = new THREE.SphereGeometry(0.15, 8, 6);
+      const ledMaterial = new THREE.MeshLambertMaterial({
+        color: 0x333333,
+        transparent: true,
+        opacity: 0.5,
+      });
+      const ledMesh = new THREE.Mesh(ledGeometry, ledMaterial);
+      ledMesh.position.set(0, 2.2, 1.6); // Adjusted position
+      binGroup.add(ledMesh);
+
+      // Label - made more visible
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 128;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#ffffff";
+      context.font = "48px Arial";
+      context.textAlign = "center";
+      context.fillText(binConfig.name, 256, 70);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const labelMaterial = new THREE.MeshLambertMaterial({
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide,
+      });
+      const labelGeometry = new THREE.PlaneGeometry(3, 0.8); // Larger label
+      const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
+      labelMesh.position.set(0, -2.2, 1.6); // Adjusted position
+      labelMesh.rotation.x = -Math.PI / 2; // Make it face upward
+      binGroup.add(labelMesh);
+
+      binGroup.position.set(...binConfig.position);
+      sceneRef.current.add(binGroup);
+
+      binsRef.current[binId] = {
+        group: binGroup,
+        leftFlap: leftFlap,
+        rightFlap: rightFlap,
+        led: ledMesh,
+        sensors: binGroup.children.filter(
+          (child) =>
+            child.geometry &&
+            child.geometry.type === "BoxGeometry" &&
+            child.position.x === 1.8
+        ),
+      };
     });
-    
-    for (let i = 0; i < 4; i++) {
-      const sensorMesh = new THREE.Mesh(sensorGeometry, sensorMaterial.clone());
-      const angle = (i / 4) * Math.PI * 2;
-      sensorMesh.position.x = Math.cos(angle) * 2.2;
-      sensorMesh.position.z = Math.sin(angle) * 2.2;
-      sensorMesh.position.y = 1;
-      sensorMesh.lookAt(0, 1, 0);
-      binGroup.add(sensorMesh);
-    }
-
-    // Top opening
-    const topGeometry = new THREE.RingGeometry(0.8, 1.2, 16);
-    const topMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x00ffff,
-      transparent: true,
-      opacity: 0.5
-    });
-    const topMesh = new THREE.Mesh(topGeometry, topMaterial);
-    topMesh.position.y = 2.5;
-    topMesh.rotation.x = -Math.PI / 2;
-    binGroup.add(topMesh);
-
-    sceneRef.current.add(binGroup);
-    binRef.current = binGroup;
   };
 
   const createWasteItem = (wasteType) => {
-    // Remove any existing waste item
-    if (wasteItemRef.current) {
-      sceneRef.current.remove(wasteItemRef.current);
-      wasteItemRef.current = null;
-    }
-
     const waste = wasteTypes[wasteType];
     let geometry;
-    
-    switch(wasteType) {
-      case 'metal':
-        geometry = new THREE.CylinderGeometry(0.2, 0.2, 0.8, 8);
+
+    switch (waste.shape) {
+      case "sphere":
+        geometry = new THREE.SphereGeometry(0.4, 16, 12); // Slightly larger
         break;
-      case 'plastic':
-        geometry = new THREE.CylinderGeometry(0.15, 0.25, 1, 8);
+      case "bottle":
+        geometry = new THREE.CylinderGeometry(0.2, 0.3, 1.2, 12); // Slightly larger
         break;
-      case 'paper':
-        geometry = new THREE.BoxGeometry(0.6, 0.1, 0.8);
+      case "flat":
+        geometry = new THREE.BoxGeometry(0.8, 0.15, 1.0); // Slightly larger
         break;
-      case 'wet':
-        geometry = new THREE.SphereGeometry(0.3, 8, 6);
+      case "can":
+        geometry = new THREE.CylinderGeometry(0.25, 0.25, 1.0, 12); // Slightly larger
         break;
-      case 'biomedical':
-        geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+      case "box":
+        geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5); // Slightly larger
+        break;
+      case "irregular":
+        geometry = new THREE.SphereGeometry(0.3, 8, 6); // Slightly larger
         break;
       default:
-        geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+        geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4); // Slightly larger
     }
 
     const material = new THREE.MeshLambertMaterial({ color: waste.color });
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(0, 6, 0);
+    mesh.position.set(0, 5, 0);
     mesh.castShadow = true;
-    
+
     sceneRef.current.add(mesh);
     wasteItemRef.current = mesh;
   };
 
-  const animateWasteProcessing = async (wasteType) => {
-    if (isAnimating || !isMountedRef.current) return;
-    
-    setIsAnimating(true);
-    setSelectedWaste(wasteType);
-    setCurrentStep('dropping');
-    setSensorStatus({});
-    setClassification('');
+  const placeWasteOnBin = async (binId) => {
+    if (!selectedWasteType || !wasteItemRef.current || isWasteOnIncorrectBin)
+      return;
 
-    try {
-      // Create waste item
-      createWasteItem(wasteType);
-      
-      // Step 1: Drop waste into bin
-      await animateDrop();
-      if (!isMountedRef.current) return;
-      
-      // Step 2: Sensor detection
-      setCurrentStep('sensor_detection');
-      await animateSensorDetection(wasteType);
-      if (!isMountedRef.current) return;
-      
-      // Step 3: AI/ML processing (for plastic only)
-      if (wasteType === 'plastic') {
-        setCurrentStep('ai_processing');
-        await animateAIProcessing();
-        if (!isMountedRef.current) return;
-      }
-      
-      // Step 4: Final classification and disposal
-      setCurrentStep('classification');
-      await animateClassification(wasteType);
-      if (!isMountedRef.current) return;
-      
-      // Cleanup
-      if (wasteItemRef.current) {
-        sceneRef.current.remove(wasteItemRef.current);
-        wasteItemRef.current = null;
-      }
-      
-      if (isMountedRef.current) {
-        setCurrentStep('completed');
-        setIsAnimating(false);
-      }
-    } catch (error) {
-      if (isMountedRef.current) {
-        setIsAnimating(false);
+    setIsProcessing(true);
+    const binPosition = bins[binId].position;
+    const waste = wasteTypes[selectedWasteType];
+    const isCorrectBin = waste.correctBin === binId;
+
+    // Move waste to bin top - positioned properly on the lid
+    await animateWasteToPosition(binPosition[0], 2.5, binPosition[2]);
+    setCurrentWastePosition(binId);
+
+    // Simulate sensor detection
+    setBinStatus((prev) => ({ ...prev, [binId]: "scanning" }));
+    await delay(1500);
+
+    // Simulate AI/ML camera analysis
+    setBinStatus((prev) => ({ ...prev, [binId]: "ai_processing" }));
+    await delay(2000);
+
+    if (isCorrectBin) {
+      // Correct waste type
+      setLedStatus("correct");
+      setBinStatus((prev) => ({ ...prev, [binId]: "correct" }));
+
+      // Open lid
+      await openBinLid(binId);
+      await delay(2000);
+
+      // Drop waste into bin
+      await animateWasteToPosition(binPosition[0], -1, binPosition[2]);
+
+      // Close lid
+      await closeBinLid(binId);
+
+      // Update counters
+      setCounters((prev) => ({
+        ...prev,
+        correctDisposals: prev.correctDisposals + 1,
+        wrongAttempts: prev.wrongAttempts + currentAttempts,
+      }));
+
+      // Clean up
+      cleanupWaste();
+      setCurrentAttempts(0);
+      setSelectedWasteType(null); // Clear selection after correct disposal
+      setIsWasteOnIncorrectBin(false);
+    } else {
+      // Wrong waste type
+      setLedStatus("incorrect");
+      setBinStatus((prev) => ({ ...prev, [binId]: "incorrect" }));
+      setCurrentAttempts((prev) => prev + 1);
+      setIsWasteOnIncorrectBin(true);
+
+      // Buzzer simulation (red LED flash)
+      for (let i = 0; i < 3; i++) {
+        updateBinLED(binId, 0xff0000);
+        await delay(200);
+        updateBinLED(binId, 0x333333);
+        await delay(200);
       }
     }
+
+    setBinStatus((prev) => ({ ...prev, [binId]: "idle" }));
+    setLedStatus("");
+    setIsProcessing(false);
   };
 
-  const animateDrop = () => {
+  const animateWasteToPosition = (x, y, z) => {
     return new Promise((resolve) => {
-      const startY = 6;
-      const endY = 2;
-      const duration = 1000;
-      const startTime = Date.now();
-
-      const animate = () => {
-        if (!isMountedRef.current || !wasteItemRef.current) {
-          resolve();
-          return;
-        }
-
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
-        
-        wasteItemRef.current.position.y = startY + (endY - startY) * easeProgress;
-        wasteItemRef.current.rotation.x += 0.05;
-        wasteItemRef.current.rotation.z += 0.03;
-
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          resolve();
-        }
-      };
-      animate();
-    });
-  };
-
-  const animateSensorDetection = (wasteType) => {
-    return new Promise((resolve) => {
-      if (!isMountedRef.current) {
+      if (!wasteItemRef.current) {
         resolve();
         return;
       }
 
-      const waste = wasteTypes[wasteType];
-      const sensorType = waste.sensor;
-      
-      setSensorStatus({ [sensorType]: 'active' });
-      
-      // Highlight sensor for 2 seconds
-      setTimeout(() => {
-        if (!isMountedRef.current) {
-          resolve();
-          return;
-        }
-        setSensorStatus({ [sensorType]: 'detected' });
-        setTimeout(resolve, 500);
-      }, 2000);
-    });
-  };
-
-  const animateAIProcessing = () => {
-    return new Promise((resolve) => {
-      if (!isMountedRef.current) {
-        resolve();
-        return;
-      }
-
-      setSensorStatus(prev => ({ ...prev, ai_ml: 'processing' }));
-      
-      setTimeout(() => {
-        if (!isMountedRef.current) {
-          resolve();
-          return;
-        }
-        setSensorStatus(prev => ({ ...prev, ai_ml: 'confirmed' }));
-        setTimeout(resolve, 1000);
-      }, 2000);
-    });
-  };
-
-  const animateClassification = (wasteType) => {
-    return new Promise((resolve) => {
-      if (!isMountedRef.current || !wasteItemRef.current) {
-        resolve();
-        return;
-      }
-
-      const waste = wasteTypes[wasteType];
-      setClassification(`Classified as: ${waste.name}`);
-      
-      // Animate waste moving to compartment
-      const targetAngle = Object.keys(wasteTypes).indexOf(wasteType) / 5 * Math.PI * 2;
-      const targetX = Math.cos(targetAngle) * 2;
-      const targetZ = Math.sin(targetAngle) * 2;
-      const targetY = -1;
-      
       const startPos = wasteItemRef.current.position.clone();
+      const endPos = new THREE.Vector3(x, y, z);
       const duration = 1500;
       const startTime = Date.now();
 
       const animate = () => {
-        if (!isMountedRef.current || !wasteItemRef.current) {
-          resolve();
-          return;
-        }
-
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        const easeProgress = 1 - Math.pow(1 - progress, 2); // Ease out
-        
-        wasteItemRef.current.position.x = startPos.x + (targetX - startPos.x) * easeProgress;
-        wasteItemRef.current.position.y = startPos.y + (targetY - startPos.y) * easeProgress;
-        wasteItemRef.current.position.z = startPos.z + (targetZ - startPos.z) * easeProgress;
-        wasteItemRef.current.scale.setScalar(1 - progress * 0.7);
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+        if (wasteItemRef.current) {
+          wasteItemRef.current.position.lerpVectors(
+            startPos,
+            endPos,
+            easeProgress
+          );
+          wasteItemRef.current.rotation.x += 0.02;
+          wasteItemRef.current.rotation.z += 0.01;
+        }
 
         if (progress < 1) {
           requestAnimationFrame(animate);
@@ -442,150 +489,240 @@ const SmartWasteSystem = () => {
     });
   };
 
+  const openBinLid = (binId) => {
+    return new Promise((resolve) => {
+      const bin = binsRef.current[binId];
+      if (!bin) {
+        resolve();
+        return;
+      }
+
+      const duration = 1000;
+      const startTime = Date.now();
+
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const angle = (progress * Math.PI) / 3; // 60 degrees
+
+        bin.leftFlap.rotation.z = -angle;
+        bin.rightFlap.rotation.z = angle;
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          resolve();
+        }
+      };
+      animate();
+    });
+  };
+
+  const closeBinLid = (binId) => {
+    return new Promise((resolve) => {
+      const bin = binsRef.current[binId];
+      if (!bin) {
+        resolve();
+        return;
+      }
+
+      const duration = 1000;
+      const startTime = Date.now();
+
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const angle = ((1 - progress) * Math.PI) / 3;
+
+        bin.leftFlap.rotation.z = -angle;
+        bin.rightFlap.rotation.z = angle;
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          resolve();
+        }
+      };
+      animate();
+    });
+  };
+
+  const updateBinLED = (binId, color) => {
+    const bin = binsRef.current[binId];
+    if (bin && bin.led) {
+      bin.led.material.color.setHex(color);
+      bin.led.material.opacity = color === 0x333333 ? 0.5 : 1;
+    }
+  };
+
+  const recollectWaste = () => {
+    if (wasteItemRef.current && !isProcessing) {
+      animateWasteToPosition(0, 5, 0);
+      setCurrentWastePosition(null);
+      setBinStatus({});
+      setLedStatus("");
+      setIsWasteOnIncorrectBin(false);
+    }
+  };
+
   const resetSystem = () => {
-    if (isAnimating) return;
-    
-    setCurrentStep('idle');
-    setSelectedWaste(null);
-    setSensorStatus({});
-    setClassification('');
-    
+    if (currentWastePosition && selectedWasteType) {
+      const waste = wasteTypes[selectedWasteType];
+      if (waste.correctBin !== currentWastePosition) {
+        setCounters((prev) => ({
+          ...prev,
+          wrongDisposals: prev.wrongDisposals + 1,
+          wrongAttempts: prev.wrongAttempts + currentAttempts,
+        }));
+      }
+    }
+
+    cleanupWaste();
+    setSelectedWasteType(null); // Clear selection on reset
+    setSelectedBin(null);
+    setCurrentWastePosition(null);
+    setBinStatus({});
+    setLedStatus("");
+    setCurrentAttempts(0);
+    setIsProcessing(false);
+    setIsWasteOnIncorrectBin(false);
+  };
+
+  const resetDashboard = () => {
+    setCounters({
+      correctDisposals: 0,
+      wrongAttempts: 0,
+      wrongDisposals: 0,
+    });
+  };
+
+  const cleanupWaste = () => {
     if (wasteItemRef.current) {
       sceneRef.current.remove(wasteItemRef.current);
       wasteItemRef.current = null;
     }
   };
 
-  const getStepDescription = () => {
-    switch(currentStep) {
-      case 'dropping':
-        return 'Waste item dropping into smart bin...';
-      case 'sensor_detection':
-        return 'Layer 1: Running sensor checks...';
-      case 'ai_processing':
-        return 'Layer 2: AI/ML verification in progress...';
-      case 'classification':
-        return 'Routing to appropriate compartment...';
-      case 'completed':
-        return 'Classification complete!';
-      default:
-        return 'Select a waste type to begin simulation';
-    }
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const handleWasteSelection = (wasteType) => {
+    if (isProcessing || isWasteOnIncorrectBin) return;
+
+    cleanupWaste();
+    setSelectedWasteType(wasteType);
+    createWasteItem(wasteType);
+    setCurrentWastePosition(null);
+    setBinStatus({});
+    setLedStatus("");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
-      <div className="text-center py-8 bg-gradient-to-r from-blue-800 to-purple-800 shadow-lg">
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+      <div className="text-center py-6 bg-gradient-to-r from-green-800 via-blue-800 to-yellow-800">
+        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-green-400 via-blue-400 to-yellow-400 bg-clip-text text-transparent">
           Smart Waste Segregation System
         </h1>
-        <p className="text-gray-200 text-lg">
-          Interactive 3D IoT + AI/ML Waste Classification Simulation
+        <p className="text-gray-300">
+          3 Bin IoT + AI/ML Waste Classification with Sensor Integration
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 p-6 max-w-7xl mx-auto">
+      <div className="flex flex-wrap lg:flex-nowrap gap-6 p-6">
         {/* 3D Visualization */}
-        <div className="flex-1">
-          <div className="bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-700">
-            <h2 className="text-xl font-semibold mb-4 text-cyan-300 flex items-center gap-2">
-              <Activity className="w-6 h-6" />
-              3D Visualization
-            </h2>
-            <div
-              ref={mountRef}
-              className="w-full flex justify-center rounded-lg overflow-hidden border border-gray-700"
-            />
+        <div className="flex-1 min-w-0">
+          <div className="bg-gray-800 rounded-xl p-4">
+            <div ref={mountRef} className="w-full flex justify-center" />
 
             {/* Status Display */}
-            <div className="mt-6 p-5 bg-gray-750 rounded-xl border border-gray-700">
-              <div className="flex items-center gap-3 mb-3">
-                <Cpu className="w-6 h-6 text-cyan-400" />
-                <span className="font-semibold text-lg">System Status:</span>
+            <div className="mt-4 p-4 bg-gray-700 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Camera className="w-5 h-5 text-cyan-400" />
+                <span className="font-semibold">System Status:</span>
+                {ledStatus === "correct" && (
+                  <CheckCircle className="w-5 h-5 text-green-400 animate-pulse" />
+                )}
+                {ledStatus === "incorrect" && (
+                  <XCircle className="w-5 h-5 text-red-400 animate-pulse" />
+                )}
               </div>
-              <p className="text-cyan-300 text-md font-medium">
-                {getStepDescription()}
-              </p>
-              {classification && (
-                <div className="flex items-center gap-2 mt-3 p-3 bg-green-900/30 rounded-lg border border-green-800/50">
-                  <CheckCircle className="w-5 h-5 text-green-400" />
-                  <p className="text-green-400 font-bold">{classification}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Process Flow */}
-            <div className="mt-6 bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-700">
-              <h3 className="text-xl font-semibold mb-5 text-blue-400">
-                Process Flow
-              </h3>
-              <div className="space-y-3">
-                {[
-                  { step: "dropping", label: "Waste Drop Detection" },
-                  {
-                    step: "sensor_detection",
-                    label: "Layer 1: Sensor Analysis",
-                  },
-                  {
-                    step: "ai_processing",
-                    label: "Layer 2: AI/ML Verification",
-                  },
-                  { step: "classification", label: "Classification & Routing" },
-                  { step: "completed", label: "Disposal Complete" },
-                ].map((item, index) => {
-                  const isActive = currentStep === item.step;
-                  const isCompleted =
-                    [
-                      "completed",
-                      "classification",
-                      "ai_processing",
-                      "sensor_detection",
-                      "dropping",
-                    ].indexOf(currentStep) >
-                    [
-                      "completed",
-                      "classification",
-                      "ai_processing",
-                      "sensor_detection",
-                      "dropping",
-                    ].indexOf(item.step);
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {Object.entries(bins).map(([binId, binConfig]) => {
+                  const status = binStatus[binId] || "idle";
+                  let statusText = "Ready";
+                  let statusColor = "text-gray-400";
+                  let bgColor = "bg-gray-600/20";
+                  
+                  if (status === "scanning") {
+                    statusText = "Sensors Scanning...";
+                    statusColor = "text-yellow-400";
+                  } else if (status === "ai_processing") {
+                    statusText = "AI/ML Processing...";
+                    statusColor = "text-blue-400";
+                  } else if (status === "correct") {
+                    statusText = "Correct Waste - Lid Open";
+                    statusColor = "text-green-400";
+                  } else if (status === "incorrect") {
+                    statusText = "Wrong Waste - Buzzer!";
+                    statusColor = "text-red-400";
+                  }
 
                   return (
                     <div
-                      key={index}
-                      className={`flex items-center p-3 rounded-xl border-2 transition-all ${
-                        isActive
-                          ? "bg-blue-900/30 border-blue-600 text-blue-300"
-                          : isCompleted
-                          ? "bg-green-900/20 border-green-700/50 text-green-300"
-                          : "bg-gray-750 border-gray-700 text-gray-400"
+                      key={binId}
+                      className={`p-3 rounded-lg border-2 bg-opacity-20 ${
+                        binId === "green"
+                          ? "border-green-500 bg-green-600/20"
+                          : binId === "blue"
+                          ? "border-blue-500 bg-blue-600/20"
+                          : "border-yellow-500 bg-yellow-600/20"
                       }`}
                     >
-                      <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center mr-3 ${
-                          isActive
-                            ? "bg-blue-600"
-                            : isCompleted
-                            ? "bg-green-600"
-                            : "bg-gray-700"
-                        }`}
-                      >
-                        {isCompleted ? (
-                          <CheckCircle className="w-4 h-4" />
-                        ) : (
-                          <span className="text-sm font-semibold">
-                            {index + 1}
-                          </span>
-                        )}
+                      <div className="font-semibold mb-1">{binConfig.name}</div>
+                      <div className={`text-sm ${statusColor}`}>
+                        {statusText}
                       </div>
-                      <span className="font-medium">{item.label}</span>
-                      {isActive && (
-                        <ChevronRight className="ml-auto w-4 h-4 animate-pulse" />
-                      )}
                     </div>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Controls - Moved below system status */}
+            <div className="mt-4 bg-gray-800 rounded-xl p-4">
+              <h3 className="text-xl font-bold mb-4">Controls</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={recollectWaste}
+                  disabled={!isWasteOnIncorrectBin || isProcessing}
+                  className="w-full p-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Archive className="w-5 h-5" />
+                  Recollect Waste
+                </button>
+
+                <button
+                  onClick={resetSystem}
+                  disabled={isProcessing}
+                  className="w-full p-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                  Reset System
+                </button>
+              </div>
+            </div>
+
+            {/* Instructions - Moved below system status */}
+            <div className="mt-4 bg-gray-800 rounded-xl p-4">
+              <h3 className="text-xl font-bold mb-4">Instructions</h3>
+              <div className="text-sm text-gray-300 space-y-2">
+                <p>1. Select waste type from the grid above</p>
+                <p>2. Choose target bin to place waste</p>
+                <p>3. Watch sensors scan and AI/ML process</p>
+                <p>4. Lid opens only for correct waste type</p>
+                <p>5. Red LED buzzer for wrong waste</p>
+                <p>6. Use recollect button to retrieve waste</p>
+                <p>7. Counters track all attempts and disposals</p>
               </div>
             </div>
           </div>
@@ -593,118 +730,115 @@ const SmartWasteSystem = () => {
 
         {/* Control Panel */}
         <div className="w-full lg:w-96 space-y-6">
+          {/* Statistics Dashboard */}
+          <div className="bg-gray-800 rounded-xl p-4">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-purple-400" />
+              Statistics Dashboard
+              <button
+                onClick={resetDashboard}
+                className="ml-auto text-sm bg-red-600 hover:bg-red-700 px-2 py-1 rounded flex items-center gap-1"
+              >
+                <Trash2 className="w-4 h-4" />
+                Reset
+              </button>
+            </h3>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="p-3 bg-green-600/20 border border-green-600 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-green-300">Correct Disposals</span>
+                  <span className="text-2xl font-bold text-green-400">
+                    {counters.correctDisposals}
+                  </span>
+                </div>
+              </div>
+              <div className="p-3 bg-yellow-600/20 border border-yellow-600 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-yellow-300">Wrong Attempts</span>
+                  <span className="text-2xl font-bold text-yellow-400">
+                    {counters.wrongAttempts}
+                  </span>
+                </div>
+              </div>
+              <div className="p-3 bg-red-600/20 border border-red-600 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-red-300">Wrong Disposals</span>
+                  <span className="text-2xl font-bold text-red-400">
+                    {counters.wrongDisposals}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Waste Selection */}
-          <div className="bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-700">
-            <h3 className="text-xl font-semibold mb-5 text-green-400 flex items-center gap-2">
-              <Recycle className="w-6 h-6" />
+          <div className="bg-gray-800 rounded-xl p-4">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Archive className="w-6 h-6 text-green-400" />
               Select Waste Type
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2">
               {Object.entries(wasteTypes).map(([key, waste]) => {
                 const IconComponent = waste.icon;
-                const isSelected = selectedWaste === key;
-
                 return (
                   <button
                     key={key}
-                    onClick={() => animateWasteProcessing(key)}
-                    disabled={isAnimating}
-                    className={`p-4 rounded-xl transition-all duration-200 flex flex-col items-center justify-center ${
-                      isSelected
-                        ? "bg-cyan-900/40 border-2 border-cyan-500 shadow-lg shadow-cyan-500/20"
-                        : "bg-gray-750 border-2 border-gray-600 hover:border-gray-500"
+                    onClick={() => handleWasteSelection(key)}
+                    disabled={isProcessing || isWasteOnIncorrectBin}
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 text-sm ${
+                      selectedWasteType === key
+                        ? "border-cyan-400 bg-cyan-400/20"
+                        : "border-gray-600 hover:border-gray-500 bg-gray-700/50"
                     } ${
-                      isAnimating
-                        ? "opacity-70 cursor-not-allowed"
+                      isProcessing || isWasteOnIncorrectBin
+                        ? "opacity-50 cursor-not-allowed"
                         : "hover:scale-105"
                     }`}
                   >
-                    <IconComponent
-                      className={`w-8 h-8 mb-2 ${
-                        isSelected ? "text-cyan-300" : "text-gray-300"
-                      }`}
-                    />
-                    <p
-                      className={`text-sm font-medium ${
-                        isSelected ? "text-cyan-200" : "text-gray-300"
-                      }`}
-                    >
-                      {waste.name}
-                    </p>
+                    <IconComponent className="w-6 h-6 mx-auto mb-1" />
+                    <p className="text-xs font-medium">{waste.name}</p>
                   </button>
                 );
               })}
             </div>
-
-            <button
-              onClick={resetSystem}
-              disabled={isAnimating}
-              className="w-full mt-5 p-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg"
-            >
-              <RotateCcw className="w-5 h-5" />
-              Reset System
-            </button>
           </div>
 
-          {/* Sensor Status */}
-          <div className="bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-700">
-            <h3 className="text-xl font-semibold mb-5 text-yellow-400 flex items-center gap-2">
-              <Zap className="w-6 h-6" />
-              Sensor Status
+          {/* Bin Selection */}
+          <div className="bg-gray-800 rounded-xl p-4">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Lightbulb className="w-6 h-6 text-blue-400" />
+              Select Target Bin
             </h3>
-            <div className="space-y-4">
-              {Object.entries(sensorInfo).map(([key, sensor]) => {
-                const IconComponent = sensor.icon;
-                const status = sensorStatus[key];
-                let statusColor = "text-gray-500";
-                let bgColor = "bg-gray-750";
-                let borderColor = "border-gray-700";
-
-                if (status === "active") {
-                  statusColor = "text-yellow-400";
-                  bgColor = "bg-yellow-900/20";
-                  borderColor = "border-yellow-700/50";
-                } else if (status === "detected" || status === "confirmed") {
-                  statusColor = "text-green-400";
-                  bgColor = "bg-green-900/20";
-                  borderColor = "border-green-700/50";
-                } else if (status === "processing") {
-                  statusColor = "text-blue-400";
-                  bgColor = "bg-blue-900/20";
-                  borderColor = "border-blue-700/50";
-                }
-
-                return (
-                  <div
-                    key={key}
-                    className={`p-4 rounded-xl border-2 transition-all duration-300 ${borderColor} ${bgColor}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <IconComponent
-                        className={`w-6 h-6 ${statusColor} ${
-                          status === "active" || status === "processing"
-                            ? "animate-pulse"
-                            : ""
-                        }`}
-                      />
-                      <span className="font-medium text-gray-200">
-                        {sensor.name}
-                      </span>
-                      {status && (
-                        <div
-                          className={`ml-auto w-3 h-3 rounded-full ${
-                            status === "active" || status === "processing"
-                              ? "bg-yellow-400 animate-pulse"
-                              : "bg-green-400"
-                          }`}
-                        />
-                      )}
-                    </div>
+            <div className="space-y-3">
+              {Object.entries(bins).map(([binId, binConfig]) => (
+                <button
+                  key={binId}
+                  onClick={() => placeWasteOnBin(binId)}
+                  disabled={
+                    !selectedWasteType || isProcessing || isWasteOnIncorrectBin
+                  }
+                  className={`w-full p-3 rounded-lg border-2 transition-all duration-200 ${
+                    binId === "green"
+                      ? "border-green-500 hover:bg-green-500/20"
+                      : binId === "blue"
+                      ? "border-blue-500 hover:bg-blue-500/20"
+                      : "border-yellow-500 hover:bg-yellow-500/20"
+                  } ${
+                    !selectedWasteType || isProcessing || isWasteOnIncorrectBin
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:scale-105"
+                  }`}
+                >
+                  <div className="font-semibold">{binConfig.name}</div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Smart detection system
                   </div>
-                );
-              })}
+                </button>
+              ))}
             </div>
           </div>
+
+          {/* Removed Controls and Instructions from here as they're now in the main panel */}
         </div>
       </div>
     </div>
