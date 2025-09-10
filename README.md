@@ -1,9 +1,7 @@
 # ♻️ Smart Waste Segregation System
 
 An **interactive 3D simulation** of a smart IoT + AI/ML waste segregation system.  
-Built using **React, Vite, Three.js, TailwindCSS, and Lucide icons**.  
-
-This project simulates how waste items are automatically classified into different categories (Metal, Plastic, Paper, Wet, Biomedical) using sensors and AI/ML, and routed into the correct bin compartments.
+Built using **React, Vite, Three.js, TailwindCSS, and Lucide icons**. 
 
 ---
 
