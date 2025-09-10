@@ -557,6 +557,14 @@ const SmartWasteSystem = () => {
 
   const recollectWaste = () => {
     if (wasteItemRef.current && !isProcessing) {
+      if (isWasteOnIncorrectBin && currentAttempts > 0) {
+        setCounters((prev) => ({
+          ...prev,
+          wrongAttempts: prev.wrongAttempts + currentAttempts,
+        }));
+        setCurrentAttempts(0);
+      }
+      
       animateWasteToPosition(0, 5, 0);
       setCurrentWastePosition(null);
       setBinStatus({});
