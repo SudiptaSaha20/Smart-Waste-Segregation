@@ -3,17 +3,29 @@
 An **interactive 3D simulation** of a smart IoT + AI/ML waste segregation system.  
 Built using **React, Vite, Three.js, TailwindCSS, and Lucide icons**.  
 
-This project simulates how waste items are automatically classified into different categories (Metal, Plastic, Paper, Wet, Biomedical) using sensors and AI/ML, and routed into the correct bin compartments.
+This project simulates how sensors and an overhead AI/ML camera work together to classify waste and decide whether the bin should open. It also demonstrates real-time feedback, counters for user actions, and handling of wrong disposals in a gamified yet realistic way.
 
 ---
 
-## 🚀 Features
+## 🚀 Features  
 
-- 🗑 **3D Smart Bin Simulation** – Real-time visualization built with Three.js.  
-- 🔍 **Sensor Emulation** – Inductive, IR, Gas, Moisture, and AI/ML camera sensors.  
-- ⚡ **Step-by-Step Process Flow** – Shows each stage (Drop → Sensor Detection → AI/ML Verification → Classification → Disposal).  
-- 🎛 **Interactive UI** – Select different waste types and see the classification process live.  
-- 🌗 **Modern UI** – TailwindCSS styling with smooth transitions and Lucide icons.  
+- 🗑 **3D Smart Bin Simulation** – Three clearly labeled bins:  
+  - **Green** → Biodegradable Waste (kitchen, garden)  
+  - **Blue** → Recyclable Waste (paper, plastic, glass, metal)  
+  - **Yellow** → Clinical & Biohazardous Waste (bandages, fluids, infected waste)  
+- 🔍 **Hybrid Waste Detection** – Edge-mounted sensors + overhead AI/ML camera. Lid opens **only when both confirm the waste type**.  
+- ⚡ **Realistic Process Flow** – Waste placed on bin → Sensor + Camera check → Correct bin opens / Wrong disposal triggers red LED buzzer.  
+- 🔊 **Interactive Feedback** – Green LED for correct disposal, red LED buzzer for wrong disposal, with a **Reset** and **Recollect Waste** option.  
+- 📊 **Smart Dashboard** – Live counters track:  
+  - ✅ Correct disposals  
+  - ⚠️ Wrong attempts (**increment immediately when waste is placed on the wrong bin**)  
+  - ❌ Wrong disposals (waste left/reset without correction)  
+- 🛠 **Advanced Handling Logic** –  
+  - Correct disposal at once → only correct counter updates  
+  - Wrong attempts → counted right away, even if later corrected  
+  - Reset after wrong placement → wrong disposal counter increments  
+- 🎛 **User Interaction** – Choose waste type and bin manually to simulate real-world decisions.  
+- 🌗 **Modern UI/UX** – TailwindCSS styling, Lucide icons, and 3D animations with smooth transitions.  
 
 ---
 
