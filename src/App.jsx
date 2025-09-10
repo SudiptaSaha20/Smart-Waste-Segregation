@@ -423,7 +423,6 @@ const SmartWasteSystem = () => {
       setCounters((prev) => ({
         ...prev,
         correctDisposals: prev.correctDisposals + 1,
-        wrongAttempts: prev.wrongAttempts + currentAttempts,
       }));
 
       // Clean up
@@ -437,6 +436,11 @@ const SmartWasteSystem = () => {
       setBinStatus((prev) => ({ ...prev, [binId]: "incorrect" }));
       setCurrentAttempts((prev) => prev + 1);
       setIsWasteOnIncorrectBin(true);
+
+      setCounters((prev) => ({
+        ...prev,
+        wrongAttempts: prev.wrongAttempts + 1,
+      }));
 
       // Buzzer simulation (red LED flash)
       for (let i = 0; i < 3; i++) {
@@ -557,14 +561,6 @@ const SmartWasteSystem = () => {
 
   const recollectWaste = () => {
     if (wasteItemRef.current && !isProcessing) {
-      if (isWasteOnIncorrectBin && currentAttempts > 0) {
-        setCounters((prev) => ({
-          ...prev,
-          wrongAttempts: prev.wrongAttempts + currentAttempts,
-        }));
-        setCurrentAttempts(0);
-      }
-      
       animateWasteToPosition(0, 5, 0);
       setCurrentWastePosition(null);
       setBinStatus({});
@@ -580,7 +576,6 @@ const SmartWasteSystem = () => {
         setCounters((prev) => ({
           ...prev,
           wrongDisposals: prev.wrongDisposals + 1,
-          wrongAttempts: prev.wrongAttempts + currentAttempts,
         }));
       }
     }
